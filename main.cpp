@@ -18,7 +18,8 @@ bool gQuit = false;
 // VAO
 GLuint gVertexArrayObject = 0;
 // VBO
-GLuint gVertexBufferObject = 0;
+GLuint gVertexBufferObject = 0;  //position
+GLuint gVertexBufferObject2 = 0; //color
 // ShaderGraphics
 GLuint gGraphicsPipelineShaderProgram = 0;
 
@@ -29,7 +30,8 @@ GLuint gGraphicsPipelineShaderProgram = 0;
     } while (0)
 // #define printf(...) fprintf(stdout, ##__VA_ARGS__)
 
-GLuint CompileShader(GLuint type, const string& source){
+
+GLuint CompileShader(GLuint type, const string source){
     GLuint shaderObject;
     if(type==GL_VERTEX_SHADER){
         shaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -37,14 +39,14 @@ GLuint CompileShader(GLuint type, const string& source){
         shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
     }
     const char *src = source.c_str();
-    glShaderSource(shaderObject, 1, &src, nullptr);
+    glShaderSource(shaderObject, 1, &src, NULL);
     glCompileShader(shaderObject);
     return shaderObject;
 }
 
 GLuint CreateShaderProgram(const char *vertexFile, const char *fragmentFile){
-    std::string vertexShaderSource = get_file_contents(vertexFile);
-    std::string fragmentShaderSource = get_file_contents(fragmentFile);
+    std::string vertexShaderSource = load_shader_as_string(vertexFile);       //get_file_contents(vertexFile);
+    std::string fragmentShaderSource = load_shader_as_string(fragmentFile);   //get_file_contents(fragmentFile);
     GLuint programObject = glCreateProgram();
     GLuint myVertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
     GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -64,27 +66,40 @@ void CreateGraphicsPipeline(){
 
 void VertexSpecification(){
     // Lives on the CPU
-    const vector<GLfloat> vertexPosition{
+    const vector<GLfloat> vertexPositions{
         // x  y   z
         -0.8f, -0.8f, 0.0f,  //vertex1
         0.8f, -0.8f, 0.0f,   //vertex2
-        0.0f, 0.8f, 0.0f     //vertex3
+        0.0f, 0.8f, 0.0f,     //vertex3
+    };
+    const vector<GLfloat> vertexColors{
+        // x  y   z
+        1.0f, 0.0f, 0.0f,  
+        0.0f, 1.0f, 0.0f,   
+        0.0f, 0.0f, 1.0f,   
     };
 
     // Setting things up on GPU
     glGenVertexArrays(1, &gVertexArrayObject);
     glBindVertexArray(gVertexArrayObject);
 
-    // Start generating our VBO
+    // Start generating our VBO ->for Position
     glGenBuffers(1, &gVertexBufferObject);
     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject);
-    glBufferData(GL_ARRAY_BUFFER, vertexPosition.size() * sizeof(GLfloat), vertexPosition.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexPositions.size() * sizeof(GLfloat), vertexPositions.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+    // Start generating our VBO ->for Color
+    glGenBuffers(1, &gVertexBufferObject2);
+    glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject2);
+    glBufferData(GL_ARRAY_BUFFER, vertexColors.size() * sizeof(GLfloat), vertexColors.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
 
     // Unbind
     glBindVertexArray(0);
     glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
 }
 
 void InitializeProgram(){

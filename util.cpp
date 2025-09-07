@@ -15,3 +15,18 @@ std::string get_file_contents(const char* filename)
 	}
 	throw(errno);
 }
+
+std::string load_shader_as_string(const char* filename){
+    std::string result = "";
+
+    std::string line = "";
+    std::ifstream myFile(filename);
+
+    if(myFile.is_open()){
+        while(std::getline(myFile, line)){
+            result += line + '\n';
+        }
+        myFile.close();
+    }
+    return result;
+}
