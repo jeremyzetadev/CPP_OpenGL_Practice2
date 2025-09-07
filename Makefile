@@ -3,8 +3,10 @@
 #dep=dep/stb/stb_image.h
 #files=${dep} ${src} ${HeaderFiles}
 
-src=main.cpp
-files=$(src)
+HeaderFiles=util.h
+
+src=main.cpp util.cpp
+files=$(src) $(HeaderFiles)
 
 glad=dependencies/glad.c 
 libs=-lm `sdl2-config --cflags --libs` -lSDL2_mixer `pkg-config --libs glfw3` -ldl
