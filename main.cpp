@@ -7,6 +7,15 @@
 #include "util.h"
 using namespace std;
 
+///// GLM /////
+#include <glm/vec3.hpp> // glm::vec3
+#include <glm/vec4.hpp> // glm::vec4
+#include <glm/mat4x4.hpp> // glm::mat4
+#include <glm/ext/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale
+#include <glm/ext/matrix_clip_space.hpp> // glm::perspective
+#include <glm/ext/scalar_constants.hpp> // glm::pi
+///// GLM /////
+
 #define SCREEN_HEIGHT 480
 #define SCREEN_WIDTH 640
 
@@ -232,6 +241,13 @@ void PreDraw(){
      glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
      glUseProgram(gGraphicsPipelineShaderProgram);
+     GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
+     // for glsl use uniform -> pass to GPU usage (vert and frag variable from CPU)
+     if(location>=0){
+         glUniform1f(location, g_uOffset);
+     } else {
+         cout << "Could not find u_Offset, maybe misspelling?\n";
+     }
 }
 
 void Draw(){
@@ -241,13 +257,6 @@ void Draw(){
     // glDrawArrays(GL_TRIANGLES, 0, 6);
     // GLCheck(glDrawElements(GL_TRIANGLES, 6, GL_INT, 0);) try error
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
-    // for glsl use uniform -> pass to GPU usage (vert and frag variable from CPU)
-    if(location>=0){
-        glUniform1f(location, g_uOffset);
-    } else {
-        cout << "Could not find u_Offset, maybe misspelling?\n";
-    }
 }
 
 void MainLoop(){
