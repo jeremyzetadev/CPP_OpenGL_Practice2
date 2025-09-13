@@ -260,8 +260,10 @@ void PreDraw(){
      // }
 
      // model transform -> translating our object into worldspace
-     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, g_uOffset));
-     model           = glm::rotate(model, glm::radians(g_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
+     // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
+     // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
+     glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(g_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
+     model           = glm::translate(model, glm::vec3(0.0f, 0.0f, g_uOffset));
      model           = glm::scale(model, glm::vec3(g_uScale, g_uScale, g_uScale));
      GLint u_ModelMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ModelMatrix");
      if(u_ModelMatrixLocation>=0){
