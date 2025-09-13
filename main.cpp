@@ -25,6 +25,9 @@ GLuint gElementBufferObject = 0;
 // ShaderGraphics
 GLuint gGraphicsPipelineShaderProgram = 0;
 
+// for glsl use uniform
+float g_uOffset = 0.0f;
+
 #define ERROR_EXIT(...) {fprintf(stderr, __VA_ARGS__); exit(1);}
 #define PRINTF(format, ...) \
     do { \
@@ -207,6 +210,16 @@ void Input(){
             gQuit = true;
         }
     }
+
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    if(state[SDL_SCANCODE_UP]){
+        g_uOffset+=0.01f;
+        cout << "g_uOffset: " << g_uOffset << endl;
+    }
+    if(state[SDL_SCANCODE_DOWN]){
+        g_uOffset-=0.01f;
+        cout << "g_uOffset: " << g_uOffset << endl;
+    }
 }
 
 void PreDraw(){
@@ -228,6 +241,13 @@ void Draw(){
     // glDrawArrays(GL_TRIANGLES, 0, 6);
     // GLCheck(glDrawElements(GL_TRIANGLES, 6, GL_INT, 0);) try error
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
+    // for glsl use uniform -> pass to GPU usage (vert and frag variable from CPU)
+    if(location>=0){
+        glUniform1f(location, g_uOffset);
+    } else {
+        cout << "Could not find u_Offset, maybe misspelling?\n";
+    }
 }
 
 void MainLoop(){
