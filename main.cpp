@@ -35,7 +35,7 @@ GLuint gElementBufferObject = 0;
 GLuint gGraphicsPipelineShaderProgram = 0;
 
 // for glsl use uniform
-float g_uOffset = 0.0f;
+float g_uOffset = -1.0f;
 
 #define ERROR_EXIT(...) {fprintf(stderr, __VA_ARGS__); exit(1);}
 #define PRINTF(format, ...) \
@@ -248,12 +248,22 @@ void PreDraw(){
      // } else {
      //     cout << "Could not find u_Offset, maybe misspelling?\n";
      // }
-     glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, g_uOffset, 0.0f));
+
+     // model transform -> translating our object into worldspace
+     glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, g_uOffset));
      GLint u_ModelMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ModelMatrix");
      if(u_ModelMatrixLocation>=0){
          glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &translate[0][0]);
      } else {
          cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
+     }
+     // projection transform -> (this projection moves to z)
+     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 100.0f);
+     GLint u_ProjectionLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Projection");
+     if(u_ProjectionLocation>=0){
+         glUniformMatrix4fv(u_ProjectionLocation, 1, GL_FALSE, &projection[0][0]);
+     } else {
+         cout << "Could not find u_Projection, maybe misspelling?\n";
      }
 }
 
