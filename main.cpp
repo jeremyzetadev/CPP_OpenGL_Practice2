@@ -18,8 +18,7 @@ bool gQuit = false;
 // VAO
 GLuint gVertexArrayObject = 0;
 // VBO
-GLuint gVertexBufferObject = 0;  //position
-GLuint gVertexBufferObject2 = 0; //color
+GLuint gVertexBufferObject = 0;  //position + color
 // ShaderGraphics
 GLuint gGraphicsPipelineShaderProgram = 0;
 
@@ -64,19 +63,56 @@ void CreateGraphicsPipeline(){
     gGraphicsPipelineShaderProgram = CreateShaderProgram("Shader/vert.glsl","Shader/frag.glsl");
 }
 
+// Multiple VBO
+// void VertexSpecification_OLD(){
+//     // Lives on the CPU
+//     const vector<GLfloat> vertexPositions{
+//         // x  y   z
+//         -0.8f, -0.8f, 0.0f,  //vertex1
+//         0.8f, -0.8f, 0.0f,   //vertex2
+//         0.0f, 0.8f, 0.0f,     //vertex3
+//     };
+//     const vector<GLfloat> vertexColors{
+//         // x  y   z
+//         1.0f, 0.0f, 0.0f,  
+//         0.0f, 1.0f, 0.0f,   
+//         0.0f, 0.0f, 1.0f,   
+//     };
+//
+//     // Setting things up on GPU
+//     glGenVertexArrays(1, &gVertexArrayObject);
+//     glBindVertexArray(gVertexArrayObject);
+//
+//     // Start generating our VBO ->for Position
+//     glGenBuffers(1, &gVertexBufferObject);
+//     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject);
+//     glBufferData(GL_ARRAY_BUFFER, vertexPositions.size() * sizeof(GLfloat), vertexPositions.data(), GL_STATIC_DRAW);
+//     glEnableVertexAttribArray(0);
+//     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+//     // Start generating our VBO ->for Color
+//     glGenBuffers(1, &gVertexBufferObject2);
+//     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject2);
+//     glBufferData(GL_ARRAY_BUFFER, vertexColors.size() * sizeof(GLfloat), vertexColors.data(), GL_STATIC_DRAW);
+//     glEnableVertexAttribArray(1);
+//     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+//
+//     // Unbind
+//     glBindVertexArray(0);
+//     glDisableVertexAttribArray(0);
+//     glDisableVertexAttribArray(1);
+// }
+
+// Single VBO (position+color)
 void VertexSpecification(){
     // Lives on the CPU
-    const vector<GLfloat> vertexPositions{
+    const vector<GLfloat> vertexData{
         // x  y   z
         -0.8f, -0.8f, 0.0f,  //vertex1
+        1.0f, 0.0f, 0.0f,         //color
         0.8f, -0.8f, 0.0f,   //vertex2
+        0.0f, 1.0f, 0.0f,         //color
         0.0f, 0.8f, 0.0f,     //vertex3
-    };
-    const vector<GLfloat> vertexColors{
-        // x  y   z
-        1.0f, 0.0f, 0.0f,  
-        0.0f, 1.0f, 0.0f,   
-        0.0f, 0.0f, 1.0f,   
+        0.0f, 0.0f, 1.0f,         //color
     };
 
     // Setting things up on GPU
@@ -86,15 +122,13 @@ void VertexSpecification(){
     // Start generating our VBO ->for Position
     glGenBuffers(1, &gVertexBufferObject);
     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject);
-    glBufferData(GL_ARRAY_BUFFER, vertexPositions.size() * sizeof(GLfloat), vertexPositions.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(GLfloat), vertexData.data(), GL_STATIC_DRAW);
+    //    vertex
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
-    // Start generating our VBO ->for Color
-    glGenBuffers(1, &gVertexBufferObject2);
-    glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject2);
-    glBufferData(GL_ARRAY_BUFFER, vertexColors.size() * sizeof(GLfloat), vertexColors.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*6, (void *)0);
+    //    color
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*6, (void *)(sizeof(GL_FLOAT)*3));
 
     // Unbind
     glBindVertexArray(0);
