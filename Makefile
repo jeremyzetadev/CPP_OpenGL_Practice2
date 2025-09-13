@@ -5,7 +5,7 @@
 
 HeaderFiles=util.h
 
-src=main.cpp util.cpp
+src=main.cpp util.cpp camera.cpp
 files=$(src) $(HeaderFiles)
 
 glad=dependencies/glad.c 

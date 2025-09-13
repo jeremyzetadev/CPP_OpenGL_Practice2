@@ -16,6 +16,8 @@ using namespace std;
 #include <glm/ext/scalar_constants.hpp> // glm::pi
 ///// GLM /////
 
+#include "camera.hpp"
+
 #define SCREEN_HEIGHT 480
 #define SCREEN_WIDTH 640
 
@@ -38,6 +40,9 @@ GLuint gGraphicsPipelineShaderProgram = 0;
 float g_uOffset = -1.0f;
 float g_uRotate = 0.0f;
 float g_uScale = 0.5f;
+
+Camera gCamera;
+
 
 #define ERROR_EXIT(...) {fprintf(stderr, __VA_ARGS__); exit(1);}
 #define PRINTF(format, ...) \
@@ -223,6 +228,7 @@ void Input(){
     }
 
     const Uint8 *state = SDL_GetKeyboardState(NULL);
+    // input key to move object
     if(state[SDL_SCANCODE_UP]){
         g_uOffset+=0.01f;
         cout << "g_uOffset: " << g_uOffset << endl;
@@ -238,6 +244,20 @@ void Input(){
     if(state[SDL_SCANCODE_RIGHT]){
         g_uRotate-=0.1f;
         cout << "g_uRotate: " << g_uRotate << endl;
+    }
+    // input key to move camera
+    float speed = 0.01f;
+    if(state[SDL_SCANCODE_W]){
+        gCamera.MoveForward(speed);
+    }
+    if(state[SDL_SCANCODE_S]){
+        gCamera.MoveBackward(speed);
+    }
+    if(state[SDL_SCANCODE_D]){
+        gCamera.MoveLeft(speed);
+    }
+    if(state[SDL_SCANCODE_A]){
+        gCamera.MoveRight(speed);
     }
 }
 
@@ -259,11 +279,14 @@ void PreDraw(){
      //     cout << "Could not find u_Offset, maybe misspelling?\n";
      // }
 
+    // object matrix uniform values
+    g_uRotate -=0.02f;
+    // g_uOffset +=0.01f;
      // model transform -> translating our object into worldspace
      // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
      // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
-     glm::mat4 model = glm::rotate(glm::mat4(1.0f), glm::radians(g_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
-     model           = glm::translate(model, glm::vec3(0.0f, 0.0f, g_uOffset));
+     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, g_uOffset));
+     model           = glm::rotate(model, glm::radians(g_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
      model           = glm::scale(model, glm::vec3(g_uScale, g_uScale, g_uScale));
      GLint u_ModelMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ModelMatrix");
      if(u_ModelMatrixLocation>=0){
@@ -271,6 +294,15 @@ void PreDraw(){
      } else {
          cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
      }
+    
+     glm::mat4 view = gCamera.GetViewMatrix();
+     GLint u_ViewLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ViewMatrix");
+     if(u_ViewLocation>=0){
+         glUniformMatrix4fv(u_ViewLocation, 1, GL_FALSE, &view[0][0]);
+     } else {
+         cout << "Could not find u_View, maybe misspelling?\n";
+     }
+
      // projection transform -> (this projection moves out object to z)
      glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 100.0f);
      GLint u_ProjectionLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Projection");
@@ -279,6 +311,8 @@ void PreDraw(){
      } else {
          cout << "Could not find u_Projection, maybe misspelling?\n";
      }
+
+
 }
 
 void Draw(){
