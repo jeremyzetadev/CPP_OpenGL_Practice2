@@ -33,6 +33,27 @@ GLuint gGraphicsPipelineShaderProgram = 0;
 // #define printf(...) fprintf(stdout, ##__VA_ARGS__)
 
 
+////// Error Handling Routines //////
+static void GLClearAllErrors(){
+    while(glGetError() != GL_NO_ERROR){
+    }
+}
+
+static bool GLCheckErrorStatus(const char*function, int line){
+    while(GLenum error = glGetError()){
+        cout << "OpenGL Error: " << error 
+             << "\tLine: " << line 
+             << "\tfunction: " << function << endl;
+        return true;
+    }
+    return false;
+}
+
+#define GLCheck(x) GLClearAllErrors(); x; GLCheckErrorStatus(#x, __LINE__);
+// wrap the function example -> GLCheck(gl_DrawElements(GL_TRIANGLES, 6, GL_INT,0);)
+////// Error Handling Routines //////
+
+
 GLuint CompileShader(GLuint type, const string source){
     GLuint shaderObject;
     if(type==GL_VERTEX_SHADER){
@@ -205,6 +226,7 @@ void Draw(){
     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject);
 
     // glDrawArrays(GL_TRIANGLES, 0, 6);
+    // GLCheck(glDrawElements(GL_TRIANGLES, 6, GL_INT, 0);) try error
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
