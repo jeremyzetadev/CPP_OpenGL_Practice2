@@ -37,6 +37,7 @@ GLuint gGraphicsPipelineShaderProgram = 0;
 // for glsl use uniform
 float g_uOffset = -1.0f;
 float g_uRotate = 0.0f;
+float g_uScale = 0.5f;
 
 #define ERROR_EXIT(...) {fprintf(stderr, __VA_ARGS__); exit(1);}
 #define PRINTF(format, ...) \
@@ -261,6 +262,7 @@ void PreDraw(){
      // model transform -> translating our object into worldspace
      glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, g_uOffset));
      model           = glm::rotate(model, glm::radians(g_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
+     model           = glm::scale(model, glm::vec3(g_uScale, g_uScale, g_uScale));
      GLint u_ModelMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ModelMatrix");
      if(u_ModelMatrixLocation>=0){
          glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
