@@ -241,12 +241,19 @@ void PreDraw(){
      glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
      glUseProgram(gGraphicsPipelineShaderProgram);
-     GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
      // for glsl use uniform -> pass to GPU usage (vert and frag variable from CPU)
-     if(location>=0){
-         glUniform1f(location, g_uOffset);
+     // GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
+     // if(location>=0){
+     //     glUniform1f(location, g_uOffset);
+     // } else {
+     //     cout << "Could not find u_Offset, maybe misspelling?\n";
+     // }
+     glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, g_uOffset, 0.0f));
+     GLint u_ModelMatrixLocation = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_ModelMatrix");
+     if(u_ModelMatrixLocation>=0){
+         glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &translate[0][0]);
      } else {
-         cout << "Could not find u_Offset, maybe misspelling?\n";
+         cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
      }
 }
 
