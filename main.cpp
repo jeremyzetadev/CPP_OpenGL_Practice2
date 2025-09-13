@@ -106,12 +106,20 @@ void CreateGraphicsPipeline(){
 void VertexSpecification(){
     // Lives on the CPU
     const vector<GLfloat> vertexData{
-        // x  y   z
-        -0.8f, -0.8f, 0.0f,  //vertex1
+        // Winding order CCW(is front face)
+        // First Triangle
+        -0.5f, -0.5f, 0.0f,  //bottom left vertex
         1.0f, 0.0f, 0.0f,         //color
-        0.8f, -0.8f, 0.0f,   //vertex2
+        0.5f, -0.5f, 0.0f,   //bottom right vertex
         0.0f, 1.0f, 0.0f,         //color
-        0.0f, 0.8f, 0.0f,     //vertex3
+        -0.5f, 0.5f, 0.0f,   //top left vertex
+        0.0f, 0.0f, 1.0f,         //color
+        // Second Triangle
+        0.5f, -0.5f, 0.0f,   //bottom right vertex
+        0.0f, 1.0f, 0.0f,         //color
+        0.5f, 0.5f, 0.0f,  //top right vertex
+        0.0f, 0.0f, 1.0f,         //color
+        -0.5f, 0.5f, 0.0f,   //top left vertex
         0.0f, 0.0f, 1.0f,         //color
     };
 
@@ -188,7 +196,7 @@ void Draw(){
     glBindVertexArray(gVertexArrayObject);
     glBindBuffer(GL_ARRAY_BUFFER, gVertexBufferObject);
 
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void MainLoop(){
