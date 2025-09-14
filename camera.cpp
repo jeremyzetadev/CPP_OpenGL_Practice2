@@ -1,5 +1,6 @@
 #include "camera.hpp"
 
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/rotate_vector.hpp>
@@ -16,6 +17,15 @@ Camera::Camera(){
 
 glm::mat4 Camera::GetViewMatrix() const{
     return glm::lookAt(myEye, myEye+mViewDirection, mUpVector);
+}
+
+glm::mat4 Camera::GetProjectionMatrix() const{
+   // return glm::perspective(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
+   return mProjectionMatrix;
+}
+
+void Camera::SetProjectionMatrix(float fovy, float aspect, float near, float far){
+    mProjectionMatrix = glm::perspective(fovy, aspect, near, far);
 }
 
 void Camera::MouseLook(int mouseX, int mouseY){

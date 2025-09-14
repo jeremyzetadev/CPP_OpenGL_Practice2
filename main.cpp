@@ -88,13 +88,44 @@ App gApp;
 Mesh3D gMesh1;
 Mesh3D gMesh2;
 
+int FindUniformLocation(GLuint pipeline, const GLchar *name){
+     GLint location = glGetUniformLocation(pipeline, name);
+     if(location<0){
+         cout << "Could not find u_Projection, maybe misspelling?\n";
+         exit(EXIT_FAILURE);
+     }
+
+     return location;
+}
+
 void Mesh_Draw(Mesh3D *mesh){
     if(mesh==nullptr){
         return;
     }
-
-    // Setup which graphics pipeline we are going to use
     glUseProgram(mesh->m_Pipeline);
+
+    // object matrix uniform values
+    mesh->m_uRotate -=0.02f;
+    // g_uOffset +=0.01f;
+    // model transform -> translating our object into worldspace
+    // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
+    // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, mesh->m_Transform.z));
+    // glm::mat4 model = glm::translate(glm::mat4(1.0f), mesh->m_Transform);
+    model           = glm::rotate(model, glm::radians(mesh->m_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
+    model           = glm::scale(model, glm::vec3(mesh->m_uScale, mesh->m_uScale, mesh->m_uScale));
+    GLint u_ModelMatrixLocation = FindUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ModelMatrix");
+    glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
+
+    glm::mat4 view = gApp.m_Camera.GetViewMatrix();
+    GLint u_ViewLocation = FindUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ViewMatrix");
+    glUniformMatrix4fv(u_ViewLocation, 1, GL_FALSE, &view[0][0]);
+
+    // projection transform -> (this projection moves out object to z)
+    // retrieve our location of our projection matrix uniform
+    glm::mat4 projection = gApp.m_Camera.GetProjectionMatrix();
+    GLint u_ProjectionLocation = FindUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_Projection");
+    glUniformMatrix4fv(u_ProjectionLocation, 1, GL_FALSE, &projection[0][0]);
 
     glBindVertexArray(mesh->m_VertexArrayObject);
     glBindBuffer(GL_ARRAY_BUFFER, mesh->m_VertexBufferObject);
@@ -157,44 +188,6 @@ void Mesh_Create(Mesh3D *mesh){
 
 void Mesh_SetPipeline(Mesh3D *mesh, GLuint pipeline){
     mesh->m_Pipeline = pipeline;
-}
-
-void Mesh_Update(Mesh3D *mesh){
-     glUseProgram(mesh->m_Pipeline);
-
-    // object matrix uniform values
-    mesh->m_uRotate -=0.02f;
-    // g_uOffset +=0.01f;
-     // model transform -> translating our object into worldspace
-     // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
-     // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
-     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, mesh->m_Transform.z));
-     // glm::mat4 model = glm::translate(glm::mat4(1.0f), mesh->m_Transform);
-     model           = glm::rotate(model, glm::radians(mesh->m_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
-     model           = glm::scale(model, glm::vec3(mesh->m_uScale, mesh->m_uScale, mesh->m_uScale));
-     GLint u_ModelMatrixLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ModelMatrix");
-     if(u_ModelMatrixLocation>=0){
-         glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-     } else {
-         cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
-     }
-    
-     glm::mat4 view = gApp.m_Camera.GetViewMatrix();
-     GLint u_ViewLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ViewMatrix");
-     if(u_ViewLocation>=0){
-         glUniformMatrix4fv(u_ViewLocation, 1, GL_FALSE, &view[0][0]);
-     } else {
-         cout << "Could not find u_View, maybe misspelling?\n";
-     }
-
-     // projection transform -> (this projection moves out object to z)
-     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
-     GLint u_ProjectionLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_Projection");
-     if(u_ProjectionLocation>=0){
-         glUniformMatrix4fv(u_ProjectionLocation, 1, GL_FALSE, &projection[0][0]);
-     } else {
-         cout << "Could not find u_Projection, maybe misspelling?\n";
-     }
 }
 
 void Mesh_Delete(Mesh3D *mesh){
@@ -332,10 +325,7 @@ void MainLoop(){
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-        Mesh_Update(&gMesh1);
         Mesh_Draw(&gMesh1);
-
-        Mesh_Update(&gMesh2);
         Mesh_Draw(&gMesh2);
 
         // Update the screen
@@ -355,6 +345,9 @@ void CleanUp(){
 
 int main(){
     InitializeProgram(&gApp);
+
+    //setup caamera
+    gApp.m_Camera.SetProjectionMatrix(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
 
     Mesh_Create(&gMesh1);
     gMesh1.m_Transform.x = 0.0f;
