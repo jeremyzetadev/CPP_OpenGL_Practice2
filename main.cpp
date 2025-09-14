@@ -21,7 +21,6 @@ using namespace std;
 
 // #define SCREEN_HEIGHT 480
 // #define SCREEN_WIDTH 640
-
 struct App{
     int SCREEN_HEIGHT   = 480;
     int SCREEN_WIDTH    = 640;
@@ -34,25 +33,6 @@ struct App{
 
     Camera m_Camera;
 };
-
-struct Mesh3D{
-    // VAO
-    GLuint m_VertexArrayObject = 0;
-    // VBO
-    GLuint m_VertexBufferObject = 0;  //position + color
-    // EBO
-    GLuint m_ElementBufferObject = 0;
-    // for glsl use uniform
-    float m_uOffset = -1.0f;
-    float m_uRotate = 0.0f;
-    float m_uScale = 0.5f;
-};
-
-
-// Globals
-App gApp;
-Mesh3D gMesh1;
-Mesh3D gMesh2;
 
 #define ERROR_EXIT(...) {fprintf(stderr, __VA_ARGS__); exit(1);}
 #define PRINTF(format, ...) \
@@ -82,42 +62,54 @@ static bool GLCheckErrorStatus(const char*function, int line){
 // wrap the function example -> GLCheck(gl_DrawElements(GL_TRIANGLES, 6, GL_INT,0);)
 ////// Error Handling Routines //////
 
+struct Transform{
+    float x, y, z;
+};
 
-GLuint CompileShader(GLuint type, const string source){
-    GLuint shaderObject;
-    if(type==GL_VERTEX_SHADER){
-        shaderObject = glCreateShader(GL_VERTEX_SHADER);
-    }else if(type==GL_FRAGMENT_SHADER){
-        shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
+struct Mesh3D{
+    // VAO
+    GLuint m_VertexArrayObject = 0;
+    // VBO
+    GLuint m_VertexBufferObject = 0;  //position + color
+    // EBO
+    GLuint m_ElementBufferObject = 0;
+
+    GLuint m_Pipeline = 0;
+
+    // for glsl use uniform
+    // float m_uOffset = -1.0f;
+    Transform m_Transform;
+    float m_uRotate = 0.0f;
+    float m_uScale = 0.5f;
+};
+
+// Globals
+App gApp;
+Mesh3D gMesh1;
+Mesh3D gMesh2;
+
+void Mesh_Draw(Mesh3D *mesh){
+    if(mesh==nullptr){
+        return;
     }
-    const char *src = source.c_str();
-    glShaderSource(shaderObject, 1, &src, NULL);
-    glCompileShader(shaderObject);
-    return shaderObject;
-}
 
-GLuint CreateShaderProgram(const char *vertexFile, const char *fragmentFile){
-    std::string vertexShaderSource = load_shader_as_string(vertexFile);       //get_file_contents(vertexFile);
-    std::string fragmentShaderSource = load_shader_as_string(fragmentFile);   //get_file_contents(fragmentFile);
-    GLuint programObject = glCreateProgram();
-    GLuint myVertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+    // Setup which graphics pipeline we are going to use
+    glUseProgram(mesh->m_Pipeline);
 
-    glAttachShader(programObject, myVertexShader);
-    glAttachShader(programObject, myFragmentShader);
-    glLinkProgram(programObject);
+    glBindVertexArray(mesh->m_VertexArrayObject);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->m_VertexBufferObject);
 
-    glValidateProgram(programObject);
+    // glDrawArrays(GL_TRIANGLES, 0, 6);
+    // GLCheck(glDrawElements(GL_TRIANGLES, 6, GL_INT, 0);) try error
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    return programObject;
-}
-
-void CreateGraphicsPipeline(){
-    gApp.m_GraphicsPipelineShaderProgram = CreateShaderProgram("Shader/vert.glsl","Shader/frag.glsl");
+    //Stop using our current graphics pipeline, necessary if have multiple graphics pipeline
+    glUseProgram(0);
 }
 
 // Single VBO (position+color)
-void VertexSpecification(Mesh3D *mesh){
+// void VertexSpecification(Mesh3D *mesh)
+void Mesh_Create(Mesh3D *mesh){
     // Lives on the CPU
     const vector<GLfloat> vertexData{
         // Winding order CCW(is front face)
@@ -161,6 +153,87 @@ void VertexSpecification(Mesh3D *mesh){
     glBindVertexArray(0);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
+}
+
+void Mesh_SetPipeline(Mesh3D *mesh, GLuint pipeline){
+    mesh->m_Pipeline = pipeline;
+}
+
+void Mesh_Update(Mesh3D *mesh){
+     glUseProgram(mesh->m_Pipeline);
+
+    // object matrix uniform values
+    mesh->m_uRotate -=0.02f;
+    // g_uOffset +=0.01f;
+     // model transform -> translating our object into worldspace
+     // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
+     // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
+     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, mesh->m_Transform.z));
+     // glm::mat4 model = glm::translate(glm::mat4(1.0f), mesh->m_Transform);
+     model           = glm::rotate(model, glm::radians(mesh->m_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
+     model           = glm::scale(model, glm::vec3(mesh->m_uScale, mesh->m_uScale, mesh->m_uScale));
+     GLint u_ModelMatrixLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ModelMatrix");
+     if(u_ModelMatrixLocation>=0){
+         glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
+     } else {
+         cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
+     }
+    
+     glm::mat4 view = gApp.m_Camera.GetViewMatrix();
+     GLint u_ViewLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ViewMatrix");
+     if(u_ViewLocation>=0){
+         glUniformMatrix4fv(u_ViewLocation, 1, GL_FALSE, &view[0][0]);
+     } else {
+         cout << "Could not find u_View, maybe misspelling?\n";
+     }
+
+     // projection transform -> (this projection moves out object to z)
+     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
+     GLint u_ProjectionLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_Projection");
+     if(u_ProjectionLocation>=0){
+         glUniformMatrix4fv(u_ProjectionLocation, 1, GL_FALSE, &projection[0][0]);
+     } else {
+         cout << "Could not find u_Projection, maybe misspelling?\n";
+     }
+}
+
+void Mesh_Delete(Mesh3D *mesh){
+    glDeleteBuffers(1, &mesh->m_VertexArrayObject);
+    glDeleteVertexArrays(1, &mesh->m_VertexArrayObject);
+}
+
+
+GLuint CompileShader(GLuint type, const string source){
+    GLuint shaderObject;
+    if(type==GL_VERTEX_SHADER){
+        shaderObject = glCreateShader(GL_VERTEX_SHADER);
+    }else if(type==GL_FRAGMENT_SHADER){
+        shaderObject = glCreateShader(GL_FRAGMENT_SHADER);
+    }
+    const char *src = source.c_str();
+    glShaderSource(shaderObject, 1, &src, NULL);
+    glCompileShader(shaderObject);
+    return shaderObject;
+}
+
+GLuint CreateShaderProgram(const char *vertexFile, const char *fragmentFile){
+    std::string vertexShaderSource = load_shader_as_string(vertexFile);       //get_file_contents(vertexFile);
+    std::string fragmentShaderSource = load_shader_as_string(fragmentFile);   //get_file_contents(fragmentFile);
+    GLuint programObject = glCreateProgram();
+    GLuint myVertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    GLuint myFragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+
+    glAttachShader(programObject, myVertexShader);
+    glAttachShader(programObject, myFragmentShader);
+    glLinkProgram(programObject);
+
+    glValidateProgram(programObject);
+
+    return programObject;
+}
+
+void CreateGraphicsPipeline(){
+    gApp.m_GraphicsPipelineShaderProgram = CreateShaderProgram("Shader/vert.glsl","Shader/frag.glsl");
 }
 
 void InitializeProgram(App *app){
@@ -209,12 +282,12 @@ void Input(Mesh3D *mesh){
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     // input key to move object
     if(state[SDL_SCANCODE_UP]){
-        mesh->m_uOffset+=0.01f;
-        cout << "g_uOffset: " << mesh->m_uOffset << endl;
+        mesh->m_Transform.z+=0.01f;
+        cout << "g_uOffset: " << mesh->m_Transform.z << endl;
     }
     if(state[SDL_SCANCODE_DOWN]){
-        mesh->m_uOffset-=0.01f;
-        cout << "g_uOffset: " << mesh->m_uOffset << endl;
+        mesh->m_Transform.z-=0.01f;
+        cout << "g_uOffset: " << mesh->m_Transform.z << endl;
     }
     if(state[SDL_SCANCODE_LEFT]){
         mesh->m_uRotate+=0.1f;
@@ -244,69 +317,6 @@ void Input(Mesh3D *mesh){
     }
 }
 
-void PreDraw(){
-     glDisable(GL_DEPTH_TEST);
-     glDisable(GL_CULL_FACE);
-
-     glViewport(0, 0, gApp.SCREEN_WIDTH, gApp.SCREEN_HEIGHT);
-     glClearColor(1.f, 1.f, 0.f, 1.f);
-
-     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-     glUseProgram(gApp.m_GraphicsPipelineShaderProgram);
-     // for glsl use uniform -> pass to GPU usage (vert and frag variable from CPU)
-     // GLint location = glGetUniformLocation(gGraphicsPipelineShaderProgram, "u_Offset");
-     // if(location>=0){
-     //     glUniform1f(location, g_uOffset);
-     // } else {
-     //     cout << "Could not find u_Offset, maybe misspelling?\n";
-     // }
-
-    // object matrix uniform values
-    gMesh1.m_uRotate -=0.02f;
-    // g_uOffset +=0.01f;
-     // model transform -> translating our object into worldspace
-     // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
-     // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
-     glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, gMesh1.m_uOffset));
-     model           = glm::rotate(model, glm::radians(gMesh1.m_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
-     model           = glm::scale(model, glm::vec3(gMesh1.m_uScale, gMesh1.m_uScale, gMesh1.m_uScale));
-     GLint u_ModelMatrixLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ModelMatrix");
-     if(u_ModelMatrixLocation>=0){
-         glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-     } else {
-         cout << "Could not find u_ModelMatrix, maybe misspelling?\n";
-     }
-    
-     glm::mat4 view = gApp.m_Camera.GetViewMatrix();
-     GLint u_ViewLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ViewMatrix");
-     if(u_ViewLocation>=0){
-         glUniformMatrix4fv(u_ViewLocation, 1, GL_FALSE, &view[0][0]);
-     } else {
-         cout << "Could not find u_View, maybe misspelling?\n";
-     }
-
-     // projection transform -> (this projection moves out object to z)
-     glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
-     GLint u_ProjectionLocation = glGetUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_Projection");
-     if(u_ProjectionLocation>=0){
-         glUniformMatrix4fv(u_ProjectionLocation, 1, GL_FALSE, &projection[0][0]);
-     } else {
-         cout << "Could not find u_Projection, maybe misspelling?\n";
-     }
-
-
-}
-
-void Draw(){
-    glBindVertexArray(gMesh1.m_VertexArrayObject);
-    glBindBuffer(GL_ARRAY_BUFFER, gMesh1.m_VertexBufferObject);
-
-    // glDrawArrays(GL_TRIANGLES, 0, 6);
-    // GLCheck(glDrawElements(GL_TRIANGLES, 6, GL_INT, 0);) try error
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-}
-
 void MainLoop(){
     //Lock mouse cursor on center of window
     SDL_WarpMouseInWindow(gApp.m_GraphicsAppWindow, gApp.SCREEN_WIDTH/2, gApp.SCREEN_HEIGHT/2);
@@ -314,9 +324,19 @@ void MainLoop(){
     while(!gApp.m_Quit){
         Input(&gMesh1);
 
-        PreDraw();
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
 
-        Draw();
+        glViewport(0, 0, gApp.SCREEN_WIDTH, gApp.SCREEN_HEIGHT);
+        glClearColor(1.f, 1.f, 0.f, 1.f);
+
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+        Mesh_Update(&gMesh1);
+        Mesh_Draw(&gMesh1);
+
+        Mesh_Update(&gMesh2);
+        Mesh_Draw(&gMesh2);
 
         // Update the screen
         SDL_GL_SwapWindow(gApp.m_GraphicsAppWindow);
@@ -327,8 +347,7 @@ void CleanUp(){
     SDL_DestroyWindow(gApp.m_GraphicsAppWindow);
     gApp.m_GraphicsAppWindow = nullptr;
 
-    glDeleteBuffers(1, &gMesh1.m_VertexArrayObject);
-    glDeleteVertexArrays(1, &gMesh2.m_VertexArrayObject);
+    Mesh_Delete(&gMesh1);
     glDeleteProgram(gApp.m_GraphicsPipelineShaderProgram);
 
     SDL_Quit();
@@ -337,9 +356,20 @@ void CleanUp(){
 int main(){
     InitializeProgram(&gApp);
 
-    VertexSpecification(&gMesh1);
+    Mesh_Create(&gMesh1);
+    gMesh1.m_Transform.x = 0.0f;
+    gMesh1.m_Transform.y = 0.0f;
+    gMesh1.m_Transform.z = 0.0f;
+
+    Mesh_Create(&gMesh2);
+    gMesh1.m_Transform.x = 2.0f;
+    gMesh1.m_Transform.y = 0.0f;
+    gMesh1.m_Transform.z = -2.0f;
 
     CreateGraphicsPipeline();
+
+    Mesh_SetPipeline(&gMesh1, gApp.m_GraphicsPipelineShaderProgram);
+    Mesh_SetPipeline(&gMesh2, gApp.m_GraphicsPipelineShaderProgram);
 
     MainLoop();
 
