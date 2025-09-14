@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_video.h>
 #include <glad/glad.h>
 #include <iostream>
@@ -181,10 +182,10 @@ void VertexSpecification(){
 
     //    vertex
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*6, (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(GLfloat)*6, (void *)0);
     //    color
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT)*6, (void *)(sizeof(GL_FLOAT)*3));
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, sizeof(GLfloat)*6, (void *)(sizeof(GLfloat)*3));
 
     // Unbind
     glBindVertexArray(0);
@@ -219,11 +220,19 @@ void InitializeProgram(){
 }
 
 void Input(){
+    //Lock mouse cursor on center of window
+    static int mouseX = SCREEN_WIDTH/2;
+    static int mouseY = SCREEN_HEIGHT/2;
+        
     SDL_Event e;
     while(SDL_PollEvent(&e) != 0){
         if(e.type == SDL_QUIT){
             std::cout << "Goodbye!" << std::endl;
             gQuit = true;
+        }else if(e.type == SDL_MOUSEMOTION){
+            mouseX = e.motion.xrel;
+            mouseY = e.motion.yrel;
+            gCamera.MouseLook(mouseX, mouseY);
         }
     }
 
@@ -258,6 +267,10 @@ void Input(){
     }
     if(state[SDL_SCANCODE_A]){
         gCamera.MoveRight(speed);
+    }
+
+    if(state[SDL_SCANCODE_ESCAPE]){
+        gQuit = true;
     }
 }
 
@@ -325,6 +338,9 @@ void Draw(){
 }
 
 void MainLoop(){
+    //Lock mouse cursor on center of window
+    SDL_WarpMouseInWindow(gGraphicsAppWindow, SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+    SDL_SetRelativeMouseMode(SDL_TRUE);
     while(!gQuit){
         Input();
 
