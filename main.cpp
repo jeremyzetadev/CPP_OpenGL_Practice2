@@ -63,7 +63,7 @@ static bool GLCheckErrorStatus(const char*function, int line){
 ////// Error Handling Routines //////
 
 struct Transform{
-    float x, y, z;
+    glm::mat4 m_modelMatrix{glm::mat4(1.0f)};
 };
 
 struct Mesh3D{
@@ -79,8 +79,6 @@ struct Mesh3D{
     // for glsl use uniform
     // float m_uOffset = -1.0f;
     Transform m_Transform;
-    float m_uRotate = 0.0f;
-    float m_uScale = 0.5f;
 };
 
 // Globals
@@ -98,6 +96,18 @@ int FindUniformLocation(GLuint pipeline, const GLchar *name){
      return location;
 }
 
+void Mesh_Translate(Mesh3D *mesh, float x, float y, float z){
+    mesh->m_Transform.m_modelMatrix = glm::translate(mesh->m_Transform.m_modelMatrix, glm::vec3(x,y,z));
+}
+
+void Mesh_Rotate(Mesh3D *mesh, float Angle, glm::vec3 axis){
+    mesh->m_Transform.m_modelMatrix = glm::rotate(mesh->m_Transform.m_modelMatrix, glm::radians(Angle), axis);
+}
+
+void Mesh_Scale(Mesh3D *mesh, float x, float y, float z){
+    mesh->m_Transform.m_modelMatrix = glm::scale(mesh->m_Transform.m_modelMatrix, glm::vec3(x,y,z));
+}
+
 void Mesh_Draw(Mesh3D *mesh){
     if(mesh==nullptr){
         return;
@@ -105,17 +115,9 @@ void Mesh_Draw(Mesh3D *mesh){
     glUseProgram(mesh->m_Pipeline);
 
     // object matrix uniform values
-    mesh->m_uRotate -=0.02f;
-    // g_uOffset +=0.01f;
-    // model transform -> translating our object into worldspace
-    // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
-    // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, mesh->m_Transform.z));
-    // glm::mat4 model = glm::translate(glm::mat4(1.0f), mesh->m_Transform);
-    model           = glm::rotate(model, glm::radians(mesh->m_uRotate), glm::vec3(0.0f, 1.0f, 0.0f));
-    model           = glm::scale(model, glm::vec3(mesh->m_uScale, mesh->m_uScale, mesh->m_uScale));
     GLint u_ModelMatrixLocation = FindUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ModelMatrix");
-    glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &model[0][0]);
+    glUniformMatrix4fv(u_ModelMatrixLocation, 1, GL_FALSE, &mesh->m_Transform.m_modelMatrix[0][0]);
+
 
     glm::mat4 view = gApp.m_Camera.GetViewMatrix();
     GLint u_ViewLocation = FindUniformLocation(gApp.m_GraphicsPipelineShaderProgram, "u_ViewMatrix");
@@ -274,22 +276,22 @@ void Input(Mesh3D *mesh){
 
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     // input key to move object
-    if(state[SDL_SCANCODE_UP]){
-        mesh->m_Transform.z+=0.01f;
-        cout << "g_uOffset: " << mesh->m_Transform.z << endl;
-    }
-    if(state[SDL_SCANCODE_DOWN]){
-        mesh->m_Transform.z-=0.01f;
-        cout << "g_uOffset: " << mesh->m_Transform.z << endl;
-    }
-    if(state[SDL_SCANCODE_LEFT]){
-        mesh->m_uRotate+=0.1f;
-        cout << "g_uRotate: " << mesh->m_uRotate << endl;
-    }
-    if(state[SDL_SCANCODE_RIGHT]){
-        mesh->m_uRotate=0.1f;
-        cout << "g_uRotate: " << mesh->m_uRotate << endl;
-    }
+    // if(state[SDL_SCANCODE_UP]){
+    //     mesh->m_Transform.model[0+=0.01f;
+    //     cout << "g_uOffset: " << mesh->m_Transform.z << endl;
+    // }
+    // if(state[SDL_SCANCODE_DOWN]){
+    //     mesh->m_Transform.z-=0.01f;
+    //     cout << "g_uOffset: " << mesh->m_Transform.z << endl;
+    // }
+    // if(state[SDL_SCANCODE_LEFT]){
+    //     mesh->m_uRotate+=0.1f;
+    //     cout << "g_uRotate: " << mesh->m_uRotate << endl;
+    // }
+    // if(state[SDL_SCANCODE_RIGHT]){
+    //     mesh->m_uRotate=0.1f;
+    //     cout << "g_uRotate: " << mesh->m_uRotate << endl;
+    // }
     // input key to move camera
     float speed = 0.01f;
     if(state[SDL_SCANCODE_W]){
@@ -325,6 +327,10 @@ void MainLoop(){
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+        static float rotate = 0.05f;
+        Mesh_Rotate(&gMesh1,rotate,glm::vec3(0.0f, 1.0f, 0.0f));
+        Mesh_Rotate(&gMesh2,-rotate,glm::vec3(0.0f, 1.0f, 0.0f));
+
         Mesh_Draw(&gMesh1);
         Mesh_Draw(&gMesh2);
 
@@ -350,14 +356,15 @@ int main(){
     gApp.m_Camera.SetProjectionMatrix(glm::radians(45.0f), (float)gApp.SCREEN_WIDTH/(float)gApp.SCREEN_HEIGHT, 0.1f, 100.0f);
 
     Mesh_Create(&gMesh1);
-    gMesh1.m_Transform.x = 0.0f;
-    gMesh1.m_Transform.y = 0.0f;
-    gMesh1.m_Transform.z = 0.0f;
+    // model transform -> translating our object into worldspace
+    // rotate->translate (rotating at 0,0,0) then walk forward ※if camera is at 0,0 we can see that the object revolves at camera
+    // translate->rotate (walkt at 0,0,0 forward) then rotate  ※if camera is at 0,0 we can see that the object spins at itself at a distance
+    Mesh_Translate(&gMesh1, 0.0f, 0.0f, -2.0f);
+    Mesh_Scale(&gMesh1, 1.0f, 1.0f, 1.0f);
 
     Mesh_Create(&gMesh2);
-    gMesh1.m_Transform.x = 2.0f;
-    gMesh1.m_Transform.y = 0.0f;
-    gMesh1.m_Transform.z = -2.0f;
+    Mesh_Translate(&gMesh1, 2.0f, 0.0f, -2.0f);
+    Mesh_Scale(&gMesh2, 2.0f, 2.0f, 2.0f);
 
     CreateGraphicsPipeline();
 
